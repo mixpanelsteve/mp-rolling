@@ -22,10 +22,14 @@ import datetime
 import hashlib
 import urllib
 import time
+import sys
 try:
     import json
 except ImportError:
     import simplejson as json
+
+API_KEY = sys.argv[1]
+SECRET = sys.argv[2]
 
 class Mixpanel(object):
 
@@ -102,13 +106,14 @@ class Mixpanel(object):
 
 if __name__ == '__main__':
     api = Mixpanel(
-        api_key = 'API_KEY',
-        api_secret = 'SECRET'
+        api_key = API_KEY,
+        api_secret = SECRET
     )
 
     retention_types = [2,7,30]
     retention_returns = {
-            'cohorts' : }
+            'cohorts' : {}
+            }
     beginning = datetime.date(2014, 03, 15)
     today = datetime.date.today()
 
@@ -120,8 +125,8 @@ if __name__ == '__main__':
             'event' : 'Game Started',
             #'unit' : 'day',
             'from_date' : cohort_date,
-            'to_date' : today,
-            'interval' : lifetime_interval, #this is only here because users weren't tagged with Signed Up when they first played games :(
+            'to_date' : today,               #this is only here because users weren't tagged with Signed Up when they first played games :(
+            'interval' : lifetime_interval,  #if this were a truly cohorted query we would only need info from the Signed Up date itself 
             'type' : 'unique',
             'where' : '"%s" in string(properties["Signup date"]) or "%s" in string(properties["U:Created"])' % (cohort_date.isoformat(), cohort_date.isoformat())
         })
@@ -129,6 +134,7 @@ if __name__ == '__main__':
         retention_returns['cohorts'][cohort_date.isoformat()] = cohort['data']['values']['Game Started'][cohort_date.isoformat()]
 
     for type in retention_types:
+        retention_returns.update({ type : {} })
         for day in range((today - beginning).days - type): #for each type this needs to change to make sure we're giving everyone the same time
             cohort_date = beginning + datetime.timedelta(day)
             retention_start = cohort_date + datetime.timedelta(type)
@@ -145,11 +151,6 @@ if __name__ == '__main__':
                 'type' : 'unique',
                 'where' : '"%s" in string(properties["Signup date"])' % cohort_date.isoformat()
             })
-            print churn
-            try:
-                cohort_size = cohort['data']['values']['Game Started'][cohort_date.isoformat()]
-                churn_size = cohort_size - churn['data']['values']['Game Started'][retention_start.isoformat()]
-                if cohort_size != 0:
-                    print float(churn_size) / cohort_size
-            except KeyError:
-                print "ouch"
+            retention_returns[ type ][cohort_date.isoformat()] = churn['data']['values']['Game Started'][cohort_date.isoformat()]
+
+    print retention_returns
