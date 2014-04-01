@@ -20,6 +20,7 @@
 
 import datetime
 import hashlib
+from pprint import pprint
 import urllib
 import time
 import sys
@@ -53,7 +54,7 @@ class Mixpanel(object):
         params['sig'] = self.hash_args(params)
 
         request_url = '/'.join([self.ENDPOINT, str(self.VERSION)] + methods) + '/?' + self.unicode_urlencode(params)
-        print request_url
+        #print request_url
         request = urllib.urlopen(request_url)
         data = request.read()
 
@@ -130,11 +131,11 @@ if __name__ == '__main__':
             'type' : 'unique',
             'where' : '"%s" in string(properties["Signup date"]) or "%s" in string(properties["U:Created"])' % (cohort_date.isoformat(), cohort_date.isoformat())
         })
-        print cohort['data']['values']['Game Started'][cohort_date.isoformat()]
+        #print cohort['data']['values']['Game Started'][cohort_date.isoformat()]
         retention_returns['cohorts'][cohort_date.isoformat()] = cohort['data']['values']['Game Started'][cohort_date.isoformat()]
 
     for type in retention_types:
-        retention_returns.update({ type : {} })
+        retention_returns.update({ str(type) : {} })
         for day in range((today - beginning).days - type): #for each type this needs to change to make sure we're giving everyone the same time
             cohort_date = beginning + datetime.timedelta(day)
             retention_start = cohort_date + datetime.timedelta(type)
@@ -149,8 +150,9 @@ if __name__ == '__main__':
                 'to_date' : today,
                 'interval' : retention_interval,
                 'type' : 'unique',
-                'where' : '"%s" in string(properties["Signup date"])' % cohort_date.isoformat()
+                'where' : '"%s" in string(properties["Signup date"]) or "%s" in string(properties["U:Created"])' % (cohort_date.isoformat(), cohort_date.isoformat())
             })
-            retention_returns[ type ][cohort_date.isoformat()] = churn['data']['values']['Game Started'][cohort_date.isoformat()]
+            #print churn
+            retention_returns[ str(type) ].update({ cohort_date.isoformat() : churn['data']['values']['Game Started'][retention_start.isoformat()]})
 
-    print retention_returns
+    pprint(retention_returns)
